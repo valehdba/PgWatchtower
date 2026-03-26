@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" rx="48" fill="#0f172a"/>
+
+  <!-- Tower base structure -->
+  <path d="M155 310 L155 175 L245 175 L245 310" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2"/>
+
+  <!-- Tower middle section (narrower) -->
+  <path d="M145 175 L145 120 L255 120 L255 175" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2"/>
+
+  <!-- Tower top / observation deck -->
+  <path d="M125 120 L125 90 L275 90 L275 120 Z" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2"/>
+
+  <!-- Roof / pyramid top -->
+  <path d="M130 90 L200 45 L270 90 Z" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2"/>
+
+  <!-- Light beacon at top -->
+  <circle cx="200" cy="67" r="10" fill="#3b82f6"/>
+  <circle cx="200" cy="67" r="16" fill="#3b82f6" opacity="0.25"/>
+  <circle cx="200" cy="67" r="24" fill="#3b82f6" opacity="0.1"/>
+
+  <!-- Observation windows -->
+  <rect x="150" y="95" width="20" height="18" rx="2" fill="#0ea5e9" opacity="0.7"/>
+  <rect x="190" y="95" width="20" height="18" rx="2" fill="#0ea5e9" opacity="0.7"/>
+  <rect x="230" y="95" width="20" height="18" rx="2" fill="#0ea5e9" opacity="0.7"/>
+
+  <!-- Tower door -->
+  <rect x="180" y="265" width="40" height="45" rx="4" fill="#0ea5e9" opacity="0.5"/>
+
+  <!-- PostgreSQL elephant silhouette (simplified, inside middle section) -->
+  <!-- Elephant body -->
+  <ellipse cx="200" cy="210" rx="32" ry="24" fill="#336791" stroke="#6ba5d7" stroke-width="1.5"/>
+  <!-- Elephant head -->
+  <ellipse cx="227" cy="198" rx="14" ry="16" fill="#336791" stroke="#6ba5d7" stroke-width="1.5"/>
+  <!-- Trunk -->
+  <path d="M238 204 Q248 210 244 222 Q240 230 236 226" fill="none" stroke="#6ba5d7" stroke-width="2" stroke-linecap="round"/>
+  <!-- Ear -->
+  <ellipse cx="220" cy="192" rx="8" ry="10" fill="#2a5578" stroke="#6ba5d7" stroke-width="1"/>
+  <!-- Eye -->
+  <circle cx="231" cy="194" r="2.5" fill="#e2e8f0"/>
+  <!-- Legs -->
+  <line x1="180" y1="230" x2="180" y2="248" stroke="#6ba5d7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="192" y1="232" x2="192" y2="250" stroke="#6ba5d7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="208" y1="232" x2="208" y2="250" stroke="#6ba5d7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="220" y1="230" x2="220" y2="248" stroke="#6ba5d7" stroke-width="3" stroke-linecap="round"/>
+  <!-- Tail -->
+  <path d="M168 210 Q158 205 162 195" fill="none" stroke="#6ba5d7" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Data signal lines radiating from beacon -->
+  <line x1="176" y1="55" x2="140" y2="35" stroke="#3b82f6" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+  <line x1="224" y1="55" x2="260" y2="35" stroke="#3b82f6" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+  <line x1="200" y1="43" x2="200" y2="25" stroke="#3b82f6" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+
+  <!-- Small data dots around beacon -->
+  <circle cx="135" cy="32" r="3" fill="#0ea5e9" opacity="0.7"/>
+  <circle cx="265" cy="32" r="3" fill="#0ea5e9" opacity="0.7"/>
+  <circle cx="200" cy="22" r="3" fill="#0ea5e9" opacity="0.7"/>
+
+  <!-- Base / ground line -->
+  <line x1="120" y1="310" x2="280" y2="310" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Bar chart elements on left side of tower (monitoring) -->
+  <rect x="85" y="270" width="12" height="40" rx="2" fill="#10b981" opacity="0.8"/>
+  <rect x="100" y="255" width="12" height="55" rx="2" fill="#10b981" opacity="0.6"/>
+  <rect x="115" y="280" width="12" height="30" rx="2" fill="#10b981" opacity="0.4"/>
+
+  <!-- Bar chart elements on right side -->
+  <rect x="273" y="260" width="12" height="50" rx="2" fill="#f59e0b" opacity="0.8"/>
+  <rect x="288" y="275" width="12" height="35" rx="2" fill="#f59e0b" opacity="0.6"/>
+  <rect x="303" y="250" width="12" height="60" rx="2" fill="#f59e0b" opacity="0.4"/>
+
+  <!-- Text -->
+  <text x="200" y="350" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" letter-spacing="-0.5">PgWatchtower</text>
+  <text x="200" y="375" text-anchor="middle" fill="#64748b" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="500" letter-spacing="2">DATABASE SIZE ANALYTICS</text>
+</svg>

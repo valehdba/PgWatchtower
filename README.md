@@ -1,5 +1,9 @@
 # PgWatchtower — PostgreSQL Database & Table Size Analytics
 
+<p align="center">
+  <img src="logo.png" alt="PgWatchtower Logo" width="280">
+</p>
+
 A complete system for collecting, shipping, and visualizing PostgreSQL database and table size metrics over time.
 
 ## Architecture
