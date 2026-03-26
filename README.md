@@ -100,3 +100,23 @@ npm start
 - `dblink` extension (ships with PostgreSQL)
 - `pg_cron` (optional, for scheduling)
 - Node.js 18+ (for the web dashboard)
+
+## Version History
+
+| Version | Features |
+|---------|----------|
+| **1.2.0** | Parallel cloning to multiple targets, resume support, conflict resolution with configurable policies |
+| **1.1.0** | Background worker with async job queue, step-by-step progress tracking, retry & timeout |
+| **1.0.0** | Core extension — collect DB/table sizes, ship via dblink, web dashboard |
+
+### Upgrading
+
+```sql
+-- From 1.0.0 to 1.1.0 (adds background worker)
+ALTER EXTENSION pgwatchtower UPDATE TO '1.1.0';
+
+-- From 1.1.0 to 1.2.0 (adds parallel cloning)
+ALTER EXTENSION pgwatchtower UPDATE TO '1.2.0';
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for full details.
