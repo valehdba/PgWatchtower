@@ -1,0 +1,7 @@
+# pgwatchtower extension
+comment = 'Collects database and table size statistics and ships them to a remote metrics database'
+default_version = '1.0'
+module_pathname = '$libdir/pgwatchtower'
+schema = watchtower
+requires = dblink
+relocatable = false

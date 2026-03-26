@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PgWatchtower — Database Size Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  THEME & RESET                                                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    --bg-root: #0b0e14;
+    --bg-surface: #111620;
+    --bg-card: #161c28;
+    --bg-card-hover: #1a2233;
+    --bg-input: #0d1117;
+    --border: #1e2a3a;
+    --border-focus: #3b82f6;
+    --text-primary: #e2e8f0;
+    --text-secondary: #8899aa;
+    --text-muted: #556677;
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --accent-green: #10b981;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-purple: #8b5cf6;
+    --accent-pink: #ec4899;
+    --glow-blue: rgba(59, 130, 246, 0.15);
+    --glow-green: rgba(16, 185, 129, 0.15);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: var(--sans);
+    background: var(--bg-root);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  LAYOUT                                                                   */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.app-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+}
+.logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff;
+    font-family: var(--mono);
+}
+.logo-text {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+}
+.logo-text span { color: var(--text-muted); font-weight: 400; }
+
+.sidebar-section { display: flex; flex-direction: column; gap: 4px; }
+.sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-muted);
+    padding: 0 12px;
+    margin-bottom: 4px;
+}
+
+.nav-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border: none; background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--sans);
+    font-size: 13px; font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    width: 100%;
+}
+.nav-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+.nav-btn.active {
+    background: var(--glow-blue);
+    color: var(--accent-blue);
+}
+.nav-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* Filters in sidebar */
+.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-group label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+}
+.filter-group select, .filter-group input {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+.filter-group select:focus, .filter-group input:focus {
+    border-color: var(--border-focus);
+}
+.filter-group select option {
+    background: var(--bg-surface);
+}
+
+/* Main content */
+.main-content {
+    padding: 28px 32px;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+.page-header {
+    margin-bottom: 28px;
+}
+.page-header h1 {
+    font-family: var(--sans);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+.page-header p {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  STAT CARDS                                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: border-color 0.2s, transform 0.2s;
+}
+.stat-card:hover {
+    border-color: var(--accent-blue);
+    transform: translateY(-1px);
+}
+.stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+.stat-value {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+.stat-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-family: var(--mono);
+}
+.stat-sub.positive { color: var(--accent-green); }
+.stat-sub.negative { color: var(--accent-red); }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  CHART CARDS                                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+.chart-grid.two-col {
+    grid-template-columns: 1fr 1fr;
+}
+
+.chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+}
+.chart-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.chart-card h3 .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.chart-card .chart-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    font-family: var(--mono);
+}
+.chart-card canvas {
+    flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  DATA TABLE                                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.data-table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+.data-table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.data-table-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+table.data-table thead th {
+    padding: 10px 16px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    position: sticky;
+    top: 0;
+}
+table.data-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+}
+table.data-table tbody tr:hover {
+    background: var(--bg-card-hover);
+}
+table.data-table tbody td {
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+table.data-table tbody td.name-cell {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+table.data-table tbody td.size-cell {
+    color: var(--accent-cyan);
+}
+table.data-table tbody td.growth-positive {
+    color: var(--accent-green);
+}
+table.data-table tbody td.growth-negative {
+    color: var(--accent-red);
+}
+
+.table-scroll {
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  BADGES & PILLS                                                          */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--mono);
+    border-radius: 999px;
+    letter-spacing: 0.3px;
+}
+.badge.green  { background: rgba(16,185,129,0.12); color: var(--accent-green); }
+.badge.red    { background: rgba(239,68,68,0.12);   color: var(--accent-red);   }
+.badge.blue   { background: rgba(59,130,246,0.12);  color: var(--accent-blue);  }
+.badge.amber  { background: rgba(245,158,11,0.12);  color: var(--accent-amber); }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  LOADING & EMPTY                                                          */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.loading-state, .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    gap: 12px;
+}
+.spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  TABS                                                                     */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.view-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    margin-bottom: 20px;
+    width: fit-content;
+}
+.view-tab {
+    padding: 7px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--sans);
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.view-tab:hover { color: var(--text-primary); }
+.view-tab.active {
+    background: var(--accent-blue);
+    color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  RESPONSIVE                                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .sidebar {
+        position: relative;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .chart-grid.two-col { grid-template-columns: 1fr; }
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Page sections hidden by default */
+.page-section { display: none; }
+.page-section.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon">PG</div>
+            <div class="logo-text">PgWatchtower <span>v1.0</span></div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-label">Navigation</div>
+            <button class="nav-btn active" data-page="overview">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Overview
+            </button>
+            <button class="nav-btn" data-page="databases">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                Databases
+            </button>
+            <button class="nav-btn" data-page="tables">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>
+                Tables
+            </button>
+            <button class="nav-btn" data-page="top-growers">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                Top Growers
+            </button>
+            <button class="nav-btn" data-page="health">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Health
+            </button>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-label">Filters</div>
+            <div class="filter-group">
+                <label>Server</label>
+                <select id="filterServer"><option value="">All servers</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Database</label>
+                <select id="filterDatabase"><option value="">All databases</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Time Range</label>
+                <select id="filterDays">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 180 days</option>
+                    <option value="365">Last year</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="flex:1"></div>
+        <div style="padding: 8px 12px; font-size: 10px; color: var(--text-muted); font-family: var(--mono);">
+            PgWatchtower &middot; PostgreSQL Analytics
+        </div>
+    </aside>
+
+    <!-- ══════════ MAIN CONTENT ══════════ -->
+    <main class="main-content" id="mainContent">
+
+        <!-- ─── OVERVIEW PAGE ─── -->
+        <div class="page-section active" id="page-overview">
+            <div class="page-header">
+                <h1>Overview</h1>
+                <p>Aggregate size analytics across all monitored servers</p>
+            </div>
+
+            <div class="stats-row" id="summaryStats">
+                <div class="stat-card"><div class="stat-label">Servers</div><div class="stat-value" id="statServers">—</div></div>
+                <div class="stat-card"><div class="stat-label">Databases</div><div class="stat-value" id="statDatabases">—</div></div>
+                <div class="stat-card"><div class="stat-label">Tables Tracked</div><div class="stat-value" id="statTables">—</div></div>
+                <div class="stat-card"><div class="stat-label">Data Points</div><div class="stat-value" id="statDataPoints">—</div></div>
+                <div class="stat-card"><div class="stat-label">Last Collection</div><div class="stat-value" id="statLastCollection">—</div><div class="stat-sub" id="statLastCollectionAgo"></div></div>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3><span class="dot" style="background:var(--accent-blue)"></span> Database Sizes Over Time</h3>
+                    <div class="chart-subtitle">Total size per database</div>
+                    <canvas id="chartDbSizes"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-grid two-col">
+                <div class="chart-card">
+                    <h3><span class="dot" style="background:var(--accent-green)"></span> Daily Growth Rate</h3>
+                    <div class="chart-subtitle">Day-over-day % change</div>
+                    <canvas id="chartDbGrowth"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3><span class="dot" style="background:var(--accent-purple)"></span> Storage Composition</h3>
+                    <div class="chart-subtitle">Latest breakdown by type</div>
+                    <canvas id="chartComposition"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── DATABASES PAGE ─── -->
+        <div class="page-section" id="page-databases">
+            <div class="page-header">
+                <h1>Database Analytics</h1>
+                <p>Size history and growth trends per database</p>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3><span class="dot" style="background:var(--accent-cyan)"></span> Database Size History</h3>
+                    <div class="chart-subtitle">Absolute size over time</div>
+                    <canvas id="chartDbDetail"></canvas>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3><span class="dot" style="background:var(--accent-amber)"></span> Database Growth (Bytes/Day)</h3>
+                    <div class="chart-subtitle">Absolute daily growth in bytes</div>
+                    <canvas id="chartDbGrowthAbs"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── TABLES PAGE ─── -->
+        <div class="page-section" id="page-tables">
+            <div class="page-header">
+                <h1>Table Analytics</h1>
+                <p>Per-table size breakdown and trends</p>
+            </div>
+
+            <div class="view-tabs">
+                <button class="view-tab active" data-tabview="table-chart">Chart</button>
+                <button class="view-tab" data-tabview="table-list">Table List</button>
+            </div>
+
+            <div id="tabview-table-chart">
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <h3><span class="dot" style="background:var(--accent-pink)"></span> Top Tables Over Time</h3>
+                        <div class="chart-subtitle">Size trends for largest tables</div>
+                        <canvas id="chartTableSizes"></canvas>
+                    </div>
+                </div>
+                <div class="chart-grid two-col">
+                    <div class="chart-card">
+                        <h3><span class="dot" style="background:var(--accent-amber)"></span> Index vs Data Ratio</h3>
+                        <div class="chart-subtitle">Current snapshot — table vs index bytes</div>
+                        <canvas id="chartIndexRatio"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3><span class="dot" style="background:var(--accent-green)"></span> Row Count Trends</h3>
+                        <div class="chart-subtitle">Estimated row counts over time</div>
+                        <canvas id="chartRowCounts"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabview-table-list" style="display:none">
+                <div class="data-table-wrap">
+                    <div class="data-table-header">
+                        <h3>Latest Table Snapshot</h3>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Schema</th><th>Table</th><th>Total Size</th>
+                                    <th>Table</th><th>Indexes</th><th>TOAST</th><th>Rows (est)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── TOP GROWERS PAGE ─── -->
+        <div class="page-section" id="page-top-growers">
+            <div class="page-header">
+                <h1>Top Growers</h1>
+                <p>Tables with the highest absolute and percentage growth (last 30 days)</p>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3><span class="dot" style="background:var(--accent-green)"></span> Fastest Growing Tables</h3>
+                    <div class="chart-subtitle">Absolute growth in last 30 days</div>
+                    <canvas id="chartTopGrowers"></canvas>
+                </div>
+            </div>
+            <div class="data-table-wrap">
+                <div class="data-table-header"><h3>Growth Details</h3></div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Server</th><th>Database</th><th>Schema.Table</th>
+                                <th>Start Size</th><th>End Size</th><th>Growth</th><th>Growth %</th><th>Days</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topGrowersBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── HEALTH PAGE ─── -->
+        <div class="page-section" id="page-health">
+            <div class="page-header">
+                <h1>Collection Health</h1>
+                <p>Monitor the status and reliability of data collection</p>
+            </div>
+            <div class="data-table-wrap">
+                <div class="data-table-header"><h3>Collection Status (Last 30 Days)</h3></div>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Server</th><th>Database</th><th>Successes</th>
+                                <th>Failures</th><th>Last Collection</th><th>Avg Duration</th><th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="healthBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  APP STATE & CONFIG
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const API = ''; // same origin
+const state = {
+    page: 'overview',
+    server: '',
+    database: '',
+    days: 30,
+};
+
+const charts = {};
+const COLORS = [
+    '#3b82f6','#06b6d4','#10b981','#f59e0b','#ef4444',
+    '#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1',
+    '#84cc16','#e879f9','#22d3ee','#facc15','#fb923c'
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B','KB','MB','GB','TB','PB'];
+    const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(k));
+    return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+function formatNumber(n) {
+    if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return String(n);
+}
+
+function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.floor(hrs / 24) + 'd ago';
+}
+
+async function api(path, params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    const url = `${API}/api/${path}${qs ? '?' + qs : ''}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+}
+
+function destroyChart(key) {
+    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+}
+
+const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            labels: { color: '#8899aa', font: { family: "'JetBrains Mono', monospace", size: 11 } }
+        },
+        tooltip: {
+            backgroundColor: '#161c28',
+            borderColor: '#1e2a3a',
+            borderWidth: 1,
+            titleColor: '#e2e8f0',
+            bodyColor: '#8899aa',
+            titleFont: { family: "'DM Sans', sans-serif", weight: '600' },
+            bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+            padding: 12,
+            cornerRadius: 8,
+        }
+    },
+    scales: {
+        x: {
+            grid: { color: 'rgba(30,42,58,0.5)' },
+            ticks: { color: '#556677', font: { family: "'JetBrains Mono', monospace", size: 10 } }
+        },
+        y: {
+            grid: { color: 'rgba(30,42,58,0.5)' },
+            ticks: { color: '#556677', font: { family: "'JetBrains Mono', monospace", size: 10 } }
+        }
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        state.page = btn.dataset.page;
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + state.page).classList.add('active');
+        loadCurrentPage();
+    });
+});
+
+// Tab switching (tables page)
+document.querySelectorAll('.view-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const view = tab.dataset.tabview;
+        document.getElementById('tabview-table-chart').style.display = view === 'table-chart' ? '' : 'none';
+        document.getElementById('tabview-table-list').style.display  = view === 'table-list'  ? '' : 'none';
+    });
+});
+
+// Filter changes
+document.getElementById('filterServer').addEventListener('change', async (e) => {
+    state.server = e.target.value;
+    await loadDatabases();
+    loadCurrentPage();
+});
+document.getElementById('filterDatabase').addEventListener('change', (e) => {
+    state.database = e.target.value;
+    loadCurrentPage();
+});
+document.getElementById('filterDays').addEventListener('change', (e) => {
+    state.days = parseInt(e.target.value);
+    loadCurrentPage();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DATA LOADERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function loadServers() {
+    try {
+        const servers = await api('servers');
+        const sel = document.getElementById('filterServer');
+        sel.innerHTML = '<option value="">All servers</option>';
+        servers.forEach(s => {
+            sel.innerHTML += `<option value="${s.source_server}">${s.source_server} (${s.db_count} DBs)</option>`;
+        });
+    } catch(e) { console.warn('Could not load servers:', e); }
+}
+
+async function loadDatabases() {
+    const sel = document.getElementById('filterDatabase');
+    sel.innerHTML = '<option value="">All databases</option>';
+    if (!state.server) return;
+    try {
+        const dbs = await api(`servers/${encodeURIComponent(state.server)}/databases`);
+        dbs.forEach(d => {
+            sel.innerHTML += `<option value="${d.database_name}">${d.database_name} (${d.latest_pretty})</option>`;
+        });
+    } catch(e) { console.warn('Could not load databases:', e); }
+}
+
+function loadCurrentPage() {
+    switch(state.page) {
+        case 'overview':    loadOverview(); break;
+        case 'databases':   loadDatabasesPage(); break;
+        case 'tables':      loadTablesPage(); break;
+        case 'top-growers': loadTopGrowers(); break;
+        case 'health':      loadHealth(); break;
+    }
+}
+
+// ─── OVERVIEW ────────────────────────────────────────────────────────────────
+
+async function loadOverview() {
+    const params = { days: state.days };
+    if (state.server)   params.server   = state.server;
+    if (state.database) params.database = state.database;
+
+    // Summary stats
+    try {
+        const summary = await api('summary');
+        document.getElementById('statServers').textContent     = summary.servers;
+        document.getElementById('statDatabases').textContent   = summary.databases;
+        document.getElementById('statTables').textContent      = summary.tables;
+        document.getElementById('statDataPoints').textContent  = formatNumber(summary.data_points);
+        document.getElementById('statLastCollection').textContent = summary.last_collection
+            ? new Date(summary.last_collection).toLocaleDateString() : '—';
+        document.getElementById('statLastCollectionAgo').textContent = timeAgo(summary.last_collection);
+    } catch(e) { console.warn(e); }
+
+    // DB sizes chart
+    try {
+        const data = await api('db-sizes', params);
+        renderDbSizesChart(data);
+    } catch(e) { console.warn(e); }
+
+    // Growth chart
+    try {
+        const growth = await api('db-growth', params);
+        renderDbGrowthChart(growth);
+    } catch(e) { console.warn(e); }
+
+    // Composition chart
+    try {
+        const snapshot = await api('latest-snapshot', params);
+        renderCompositionChart(snapshot);
+    } catch(e) { console.warn(e); }
+}
+
+function renderDbSizesChart(data) {
+    destroyChart('dbSizes');
+    const grouped = {};
+    data.forEach(r => {
+        const key = `${r.source_server}/${r.database_name}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ x: new Date(r.collected_at), y: r.size_bytes });
+    });
+
+    const datasets = Object.entries(grouped).map(([label, pts], i) => ({
+        label,
+        data: pts,
+        borderColor: COLORS[i % COLORS.length],
+        backgroundColor: COLORS[i % COLORS.length] + '18',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+    }));
+
+    charts.dbSizes = new Chart(document.getElementById('chartDbSizes'), {
+        type: 'line',
+        data: { datasets },
+        options: {
+            ...chartDefaults,
+            scales: {
+                ...chartDefaults.scales,
+                x: { ...chartDefaults.scales.x, type: 'time', time: { unit: state.days <= 14 ? 'day' : 'week' } },
+                y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => formatBytes(v) } }
+            },
+            plugins: {
+                ...chartDefaults.plugins,
+                tooltip: {
+                    ...chartDefaults.plugins.tooltip,
+                    callbacks: { label: ctx => `${ctx.dataset.label}: ${formatBytes(ctx.parsed.y)}` }
+                }
+            }
+        }
+    });
+}
+
+function renderDbGrowthChart(data) {
+    destroyChart('dbGrowth');
+    const grouped = {};
+    data.forEach(r => {
+        const key = `${r.source_server}/${r.database_name}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ x: new Date(r.collected_at), y: parseFloat(r.growth_pct) || 0 });
+    });
+
+    const datasets = Object.entries(grouped).map(([label, pts], i) => ({
+        label,
+        data: pts,
+        borderColor: COLORS[i % COLORS.length],
+        tension: 0.3,
+        pointRadius: 1,
+        borderWidth: 2,
+    }));
+
+    charts.dbGrowth = new Chart(document.getElementById('chartDbGrowth'), {
+        type: 'line',
+        data: { datasets },
+        options: {
+            ...chartDefaults,
+            scales: {
+                ...chartDefaults.scales,
+                x: { ...chartDefaults.scales.x, type: 'time' },
+                y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v.toFixed(1) + '%' } }
+            }
+        }
+    });
+}
+
+function renderCompositionChart(data) {
+    destroyChart('composition');
+    let totalTable = 0, totalIndex = 0, totalToast = 0;
+    data.forEach(r => {
+        totalTable += r.table_bytes || 0;
+        totalIndex += r.index_bytes || 0;
+        totalToast += r.toast_bytes || 0;
+    });
+
+    charts.composition = new Chart(document.getElementById('chartComposition'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Table Data', 'Indexes', 'TOAST'],
+            datasets: [{
+                data: [totalTable, totalIndex, totalToast],
+                backgroundColor: ['#3b82f6', '#f59e0b', '#8b5cf6'],
+                borderColor: '#161c28',
+                borderWidth: 3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#8899aa', font: { size: 11 }, padding: 16 } },
+                tooltip: {
+                    ...chartDefaults.plugins.tooltip,
+                    callbacks: { label: ctx => `${ctx.label}: ${formatBytes(ctx.raw)}` }
+                }
+            }
+        }
+    });
+}
+
+// ─── DATABASES PAGE ──────────────────────────────────────────────────────────
+
+async function loadDatabasesPage() {
+    const params = { days: state.days };
+    if (state.server)   params.server   = state.server;
+    if (state.database) params.database = state.database;
+
+    try {
+        const data = await api('db-sizes', params);
+        destroyChart('dbDetail');
+        const grouped = {};
+        data.forEach(r => {
+            const key = `${r.source_server}/${r.database_name}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push({ x: new Date(r.collected_at), y: r.size_bytes });
+        });
+
+        charts.dbDetail = new Chart(document.getElementById('chartDbDetail'), {
+            type: 'line',
+            data: {
+                datasets: Object.entries(grouped).map(([label, pts], i) => ({
+                    label, data: pts,
+                    borderColor: COLORS[i % COLORS.length],
+                    backgroundColor: COLORS[i % COLORS.length] + '22',
+                    fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2,
+                }))
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    ...chartDefaults.scales,
+                    x: { ...chartDefaults.scales.x, type: 'time' },
+                    y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => formatBytes(v) } }
+                }
+            }
+        });
+
+        const growth = await api('db-growth', params);
+        destroyChart('dbGrowthAbs');
+        const gGrouped = {};
+        growth.forEach(r => {
+            const key = `${r.source_server}/${r.database_name}`;
+            if (!gGrouped[key]) gGrouped[key] = [];
+            gGrouped[key].push({ x: new Date(r.collected_at), y: parseInt(r.growth_bytes) || 0 });
+        });
+
+        charts.dbGrowthAbs = new Chart(document.getElementById('chartDbGrowthAbs'), {
+            type: 'bar',
+            data: {
+                datasets: Object.entries(gGrouped).map(([label, pts], i) => ({
+                    label, data: pts,
+                    backgroundColor: COLORS[i % COLORS.length] + 'aa',
+                    borderRadius: 3,
+                }))
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    ...chartDefaults.scales,
+                    x: { ...chartDefaults.scales.x, type: 'time', stacked: true },
+                    y: { ...chartDefaults.scales.y, stacked: true, ticks: { ...chartDefaults.scales.y.ticks, callback: v => formatBytes(v) } }
+                }
+            }
+        });
+    } catch(e) { console.warn(e); }
+}
+
+// ─── TABLES PAGE ─────────────────────────────────────────────────────────────
+
+async function loadTablesPage() {
+    const params = { days: state.days };
+    if (state.server)   params.server   = state.server;
+    if (state.database) params.database = state.database;
+
+    try {
+        // Table sizes over time (top 10)
+        const data = await api('table-sizes', params);
+        const byTable = {};
+        data.forEach(r => {
+            const key = `${r.schema_name}.${r.table_name}`;
+            if (!byTable[key]) byTable[key] = { pts: [], latestSize: 0 };
+            byTable[key].pts.push({ x: new Date(r.collected_at), y: r.total_bytes });
+            byTable[key].latestSize = Math.max(byTable[key].latestSize, r.total_bytes);
+        });
+
+        // Sort by latest size and take top 10
+        const top10 = Object.entries(byTable)
+            .sort((a, b) => b[1].latestSize - a[1].latestSize)
+            .slice(0, 10);
+
+        destroyChart('tableSizes');
+        charts.tableSizes = new Chart(document.getElementById('chartTableSizes'), {
+            type: 'line',
+            data: {
+                datasets: top10.map(([label, { pts }], i) => ({
+                    label, data: pts,
+                    borderColor: COLORS[i % COLORS.length],
+                    tension: 0.3, pointRadius: 0, borderWidth: 2,
+                }))
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    ...chartDefaults.scales,
+                    x: { ...chartDefaults.scales.x, type: 'time' },
+                    y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => formatBytes(v) } }
+                }
+            }
+        });
+
+        // Index ratio chart
+        const snapshot = await api('latest-snapshot', params);
+        const topSnap = snapshot.sort((a, b) => b.total_bytes - a.total_bytes).slice(0, 12);
+
+        destroyChart('indexRatio');
+        charts.indexRatio = new Chart(document.getElementById('chartIndexRatio'), {
+            type: 'bar',
+            data: {
+                labels: topSnap.map(r => `${r.schema_name}.${r.table_name}`),
+                datasets: [
+                    { label: 'Table', data: topSnap.map(r => r.table_bytes), backgroundColor: '#3b82f6', borderRadius: 3 },
+                    { label: 'Indexes', data: topSnap.map(r => r.index_bytes), backgroundColor: '#f59e0b', borderRadius: 3 },
+                    { label: 'TOAST', data: topSnap.map(r => r.toast_bytes), backgroundColor: '#8b5cf6', borderRadius: 3 },
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                indexAxis: 'y',
+                scales: {
+                    ...chartDefaults.scales,
+                    x: { ...chartDefaults.scales.x, stacked: true, ticks: { ...chartDefaults.scales.x.ticks, callback: v => formatBytes(v) } },
+                    y: { ...chartDefaults.scales.y, stacked: true, ticks: { ...chartDefaults.scales.y.ticks, font: { size: 9 } } }
+                }
+            }
+        });
+
+        // Row count trends (top 8)
+        const rowByTable = {};
+        data.forEach(r => {
+            const key = `${r.schema_name}.${r.table_name}`;
+            if (!rowByTable[key]) rowByTable[key] = { pts: [], latestRows: 0 };
+            rowByTable[key].pts.push({ x: new Date(r.collected_at), y: r.row_estimate });
+            rowByTable[key].latestRows = Math.max(rowByTable[key].latestRows, r.row_estimate || 0);
+        });
+        const topRows = Object.entries(rowByTable)
+            .sort((a, b) => b[1].latestRows - a[1].latestRows)
+            .slice(0, 8);
+
+        destroyChart('rowCounts');
+        charts.rowCounts = new Chart(document.getElementById('chartRowCounts'), {
+            type: 'line',
+            data: {
+                datasets: topRows.map(([label, { pts }], i) => ({
+                    label, data: pts,
+                    borderColor: COLORS[i % COLORS.length],
+                    tension: 0.3, pointRadius: 0, borderWidth: 2,
+                }))
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    ...chartDefaults.scales,
+                    x: { ...chartDefaults.scales.x, type: 'time' },
+                    y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => formatNumber(v) } }
+                }
+            }
+        });
+
+        // Table list
+        const tbody = document.getElementById('tableListBody');
+        tbody.innerHTML = snapshot.sort((a, b) => b.total_bytes - a.total_bytes).map(r => `
+            <tr>
+                <td>${r.schema_name}</td>
+                <td class="name-cell">${r.table_name}</td>
+                <td class="size-cell">${formatBytes(r.total_bytes)}</td>
+                <td>${formatBytes(r.table_bytes)}</td>
+                <td>${formatBytes(r.index_bytes)}</td>
+                <td>${formatBytes(r.toast_bytes)}</td>
+                <td>${formatNumber(r.row_estimate || 0)}</td>
+            </tr>
+        `).join('');
+
+    } catch(e) { console.warn(e); }
+}
+
+// ─── TOP GROWERS PAGE ────────────────────────────────────────────────────────
+
+async function loadTopGrowers() {
+    try {
+        const params = {};
+        if (state.server) params.server = state.server;
+
+        const growers = await api('top-growers', { ...params, limit: 20 });
+
+        // Bar chart
+        destroyChart('topGrowers');
+        const top15 = growers.slice(0, 15);
+        charts.topGrowers = new Chart(document.getElementById('chartTopGrowers'), {
+            type: 'bar',
+            data: {
+                labels: top15.map(r => `${r.schema_name}.${r.table_name}`),
+                datasets: [{
+                    label: '30-day Growth',
+                    data: top15.map(r => r.absolute_growth),
+                    backgroundColor: top15.map((_, i) => COLORS[i % COLORS.length] + 'cc'),
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                indexAxis: 'y',
+                plugins: { ...chartDefaults.plugins, legend: { display: false } },
+                scales: {
+                    ...chartDefaults.scales,
+                    x: { ...chartDefaults.scales.x, ticks: { ...chartDefaults.scales.x.ticks, callback: v => formatBytes(v) } },
+                    y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, font: { size: 10 } } }
+                }
+            }
+        });
+
+        // Table
+        const tbody = document.getElementById('topGrowersBody');
+        tbody.innerHTML = growers.map(r => `
+            <tr>
+                <td>${r.source_server}</td>
+                <td>${r.database_name}</td>
+                <td class="name-cell">${r.schema_name}.${r.table_name}</td>
+                <td>${formatBytes(r.start_bytes)}</td>
+                <td class="size-cell">${formatBytes(r.end_bytes)}</td>
+                <td class="${r.absolute_growth > 0 ? 'growth-positive' : 'growth-negative'}">
+                    ${r.absolute_growth > 0 ? '+' : ''}${formatBytes(r.absolute_growth)}
+                </td>
+                <td class="${r.growth_pct > 0 ? 'growth-positive' : 'growth-negative'}">
+                    ${r.growth_pct > 0 ? '+' : ''}${r.growth_pct}%
+                </td>
+                <td>${r.data_points}</td>
+            </tr>
+        `).join('');
+    } catch(e) { console.warn(e); }
+}
+
+// ─── HEALTH PAGE ─────────────────────────────────────────────────────────────
+
+async function loadHealth() {
+    try {
+        const health = await api('collection-health');
+        const tbody = document.getElementById('healthBody');
+        tbody.innerHTML = health.map(r => {
+            const successRate = r.success_count / (r.success_count + r.fail_count);
+            let badge = 'green', label = 'Healthy';
+            if (successRate < 0.95) { badge = 'amber'; label = 'Warning'; }
+            if (successRate < 0.8)  { badge = 'red';   label = 'Critical'; }
+
+            return `<tr>
+                <td>${r.source_server}</td>
+                <td class="name-cell">${r.database_name}</td>
+                <td>${r.success_count}</td>
+                <td class="${r.fail_count > 0 ? 'growth-negative' : ''}">${r.fail_count}</td>
+                <td>${r.last_collection ? new Date(r.last_collection).toLocaleString() : '—'}</td>
+                <td>${r.avg_duration_ms} ms</td>
+                <td><span class="badge ${badge}">${label}</span></td>
+            </tr>`;
+        }).join('');
+    } catch(e) { console.warn(e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+(async function init() {
+    await loadServers();
+    loadCurrentPage();
+})();
+</script>
+</body>
+</html>
