@@ -9,14 +9,14 @@ A complete system for collecting, shipping, and visualizing PostgreSQL database 
 ## Architecture
 
 ```
-┌──────────────────────┐       ┌─────────────────────────┐       ┌──────────────────────┐
+┌───────────────────────┐       ┌──────────────────────────┐       ┌───────────────────────┐
 │  Source PostgreSQL    │       │  Remote Metrics DB       │       │  Web Dashboard        │
-│  ──────────────────   │       │  ──────────────────────  │       │  ────────────────────  │
-│  pgwatchtower ext  │──────▶│  watchtower schema     │◀──────│  React + Chart.js     │
+│  ──────────────────   │       │  ──────────────────────  │       │  ──────────────────── │
+│  pgwatchtower ext     │──────▶│  watchtower schema       │◀──────│  React + Chart.js     │
 │  - daily cron job     │ dblink│  - db_size_history       │  API  │  - growth trends      │
 │  - config table       │       │  - table_size_history    │       │  - analytics          │
 │  - collector function │       │  - collection_log        │       │  - forecasting        │
-└──────────────────────┘       └─────────────────────────┘       └──────────────────────┘
+└───────────────────────┘       └──────────────────────────┘       └───────────────────────┘
 ```
 
 ## Components
